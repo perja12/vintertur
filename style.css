@@ -1,13 +1,13 @@
 body {
-  background-color: lightblue;
+    background-color: #f1f5f5;
 }
 
 h1 {
-  color: navy;
-  margin-left: 20px;
+    color: #000055;
+    margin-left: 20px;
 }
 
 #map {
     height: 60vh;
-    width: 80vw;
+    width: 90vw;
 }
