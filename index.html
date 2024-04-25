@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="no">
     <head>
         <meta charset="utf-8">
@@ -26,55 +27,120 @@
             <option value="2021_Halden.gpx">Halden 2021</option>
             <option value="2022_Indre_Ostfold.gpx">Indre Østfold 2022</option>
             <option value="2023_Ostmarka.gpx">Østmarka 2023</option>
+            <option value="2024_Denmark.gpx">Denmark, Jylland 2024</option>
         </select>
         <br>
-        <div id="details">
-            Distanse <span id="distance">0.0</span> km
+        <div id="map_and_stats">
+        <div id="map"></div>
+        <details>
+            <summary>Statistikk</summary>
+            <table>
+                <tr><td>Distanse</td><td><span id="distance">0.0</span> km</td></tr>
+                <tr><td>Startdato</td><td><span id="startTime">0.0</span></td></tr>
+                <tr><td>Sluttdato</td><td><span id="endTime">0.0</span></td></tr>
+                <tr><td>Gj. fart</td><td><span id="movingSpeed">0.0</span> km/h</td></tr>
+                <tr><td>Maks høyde</td><td><span id="elevationMax">-</span> m.o.h.</td></tr>
+                <tr><td>Min høyde</td><td><span id="elevationMin">-</span> m.o.h.</td></tr>
+                <tr><td>Maks temperatur</td><td><span id="tempMax">-</span> &deg;C</td></tr>
+                <tr><td>Min temperatur</td><td><span id="tempMin">-</span> &deg;C</td></tr>
+            </table>
+        </details>
         </div>
-        <br>
-      <div id="map"></div>
-      <script>
-       document.addEventListener('DOMContentLoaded', () => {
-           function update_distance(distance) {
-               let distanceEl = document.getElementById('distance')
-               let d = distance / 1000;
-               d = d.toFixed(2);
-               distanceEl.innerHTML = d;
-           }
+        <script>
+         var dateTimeFormat = new Intl.DateTimeFormat('nb-NO')
+         var numberFormat = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 });
 
-           function load_route(event) {
-               var gpx = event.target.value;
-               if (layer) {
-                   map.removeLayer(layer)
-               }
+         document.addEventListener('DOMContentLoaded', () => {
+             function update_stats(stats) {
+                 document.getElementById('distance').textContent = stats.distance;
+                 document.getElementById('startTime').textContent = stats.startTime;
+                 document.getElementById('endTime').textContent = stats.endTime;
+                 document.getElementById('movingSpeed').textContent = stats.movingSpeed;
+                 document.getElementById('elevationMax').textContent = stats.elevationMax;
+                 document.getElementById('elevationMin').textContent = stats.elevationMin;
+                 document.getElementById('tempMax').textContent = stats.tempMax;
+                 document.getElementById('tempMin').textContent = stats.tempMin;
+             }
 
-               layer = new L.GPX(gpx, {
-                   async: true,
-                   marker_options: {
-                       startIconUrl: 'images/pin_start.svg',
-                       endIconUrl: 'images/pin_end.svg',
-                       shadowUrl: 'images/pin_shadow.svg'
-                   }
-               }).on('loaded', function(e) {
-                   map.fitBounds(e.target.getBounds());
-                   let distance = layer.get_distance();
-                   update_distance(distance)
-               }).addTo(map);
-           }
+             function load_route(event) {
+                 var gpx = event.target.value;
+                 if (layer) {
+                     map.removeLayer(layer)
+                 }
 
-           let layer
-           var map = L.map('map').setView([61.35, 9.50], 3);
-           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-               attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-           }).addTo(map);
+                 layer = new L.GPX(gpx, {
+                     async: true,
+                     marker_options: {
+                         startIconUrl: 'icons/pin_start.svg',
+                         endIconUrl: 'icons/pin_end.svg',
+                         shadowUrl: '',
+                         wptIconUrls: {
+                             '': 'icons/waypoint.svg',
+                         },
+                     }
+                 }).on('loaded', function(e) {
+                     map.flyToBounds(e.target.getBounds());
 
-           //L.tileLayer('http://opencache3.statkart.no/gatekeeper/gk/gk.open_gmaps?layers=topo4&zoom={z}&x={x}&y={y}&format=image/jpeg', {
-           //    attribution: '<a href="http://www.kartverket.no/">Kartverket</a>'
-           //}).addTo(map);
+                     // Calculate temperature if available. Filter out 70 as that is an error code used by
+                     // one of the data loggers.
+                     let avgTemp = null;
+                     let minTemp = null;
+                     let maxTemp = null;
 
-           let route = document.getElementById('route_select')
-           route.addEventListener('change', load_route);
-       });
-      </script>
+                     if (layer.get_temp_data() && layer.get_temp_data().length > 0) {
+                         const temps = Object.values(layer.get_temp_data()).map(entry => entry[1])
+                                             .filter(t => t !== 70);
+                         avgTemp = temps.reduce((sum, t) => sum + t, 0) / temps.length;
+                         avgTemp = avgTemp.toFixed(1);
+                         minTemp = Math.min(...temps);
+                         maxTemp = Math.max(...temps);
+                     }
+
+                     let movingSpeed = layer.get_moving_speed()
+
+                     // Only show moving speed less than 15 km/h since some GPX tracks shows
+                     // completely wrong speed.
+                     if (movingSpeed > 15) {
+                         movingSpeed = Infinity
+                     }
+
+                     // Update statistics about the selected track
+                     const stats = {
+                         distance: numberFormat.format(layer.get_distance() / 1000),
+                         startTime: dateTimeFormat.format(layer.get_start_time()),
+                         endTime: dateTimeFormat.format(layer.get_end_time()),
+                         movingSpeed: numberFormat.format(movingSpeed),
+                         elevationMin: numberFormat.format(layer.get_elevation_min()),
+                         elevationMax: numberFormat.format(layer.get_elevation_max()),
+                         tempAvg: avgTemp,
+                         tempMin: minTemp,
+                         tempMax: maxTemp,
+                     };
+
+                     update_stats(stats);
+                     }).addTo(map);
+             }
+
+             let layer
+             var map = L.map('map', {
+                 zoomControl: false
+             }).setView([61.35, 9.50], 5);
+
+             L.control.zoom({
+                 position: 'topright'
+             }).addTo(map);
+
+             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+             }).addTo(map);
+
+             //L.tileLayer('http://opencache3.statkart.no/gatekeeper/gk/gk.open_gmaps?layers=topo4&zoom={z}&x={x}&y={y}&format=image/jpeg', {
+             //    attribution: '<a href="http://www.kartverket.no/">Kartverket</a>'
+             //}).addTo(map);
+
+             let route = document.getElementById('route_select')
+             route.addEventListener('change', load_route);
+         });
+        </script>
     </body>
 </html>

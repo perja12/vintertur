@@ -234,6 +234,7 @@
       </trkpt>
       <trkpt lat="59.796789167" lon="11.046874635">
         <ele>192.934</ele>
+        <time>2023-04-20T14:00:30Z</time>
       </trkpt>
     </trkseg>
   </trk>
@@ -623,6 +624,7 @@
       </trkpt>
       <trkpt lat="59.848976992" lon="11.022038637">
         <ele>207.238</ele>
+        <time>2023-04-22T15:00:30Z</time>
       </trkpt>
     </trkseg>
   </trk>
@@ -868,6 +870,7 @@
       </trkpt>
       <trkpt lat="59.889967432" lon="10.982695157">
         <ele>178.348</ele>
+        <time>2023-04-22T14:30:30Z</time>
       </trkpt>
     </trkseg>
   </trk>
